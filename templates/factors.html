@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Telco Churn – Tỷ lệ rời bỏ theo nhóm</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Những yếu tố nào liên quan đến việc khách hàng rời bỏ?</h1>
+      <p class="sub">Bước 2 · Tỷ lệ rời bỏ và ở lại theo từng nhóm khách hàng</p>
+      <nav><a href="{{ url_for('index') }}">Tổng quan dữ liệu</a><a href="{{ url_for('factors') }}" class="active">Tỷ lệ theo nhóm</a></nav>
+    </header>
+
+    <section>
+      <label for="feature">Chọn yếu tố cần xem</label>
+      <select id="feature"></select>
+      <p id="insight" class="note"></p>
+      <div class="chart-box"><canvas id="chart"></canvas></div>
+      <p class="note">Mỗi nhóm có hai cột cộng lại 100%. Rê chuột vào cột để xem số khách hàng của nhóm.</p>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    const DATA = {{ data|tojson }};
+    const select = document.getElementById("feature");
+    const insight = document.getElementById("insight");
+
+    Object.keys(DATA).forEach(function (name) {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name;
+      select.appendChild(opt);
+    });
+    select.value = "Contract";
+
+    const css = getComputedStyle(document.documentElement);
+    const textColor = css.getPropertyValue("--text").trim();
+    const gridColor = css.getPropertyValue("--line").trim();
+
+    const chart = new Chart(document.getElementById("chart"), {
+      type: "bar",
+      data: {
+        labels: [],
+        datasets: [
+          { label: "Rời bỏ (Churn = Yes)", data: [], backgroundColor: "#d1495b" },
+          { label: "Ở lại (Churn = No)", data: [], backgroundColor: "#3d8fb8" }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { ticks: { color: textColor }, grid: { display: false } },
+          y: {
+            min: 0, max: 100,
+            title: { display: true, text: "Tỷ lệ khách hàng trong nhóm (%)", color: textColor },
+            ticks: { color: textColor, callback: function (v) { return v + "%"; } },
+            grid: { color: gridColor }
+          }
+        },
+        plugins: {
+          legend: { labels: { color: textColor } },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) { return ctx.dataset.label + ": " + ctx.parsed.y.toFixed(2) + "%"; },
+              afterBody: function (items) {
+                const d = DATA[select.value];
+                return "Số khách trong nhóm: " + d.customers[items[0].dataIndex].toLocaleString("vi-VN");
+              }
+            }
+          }
+        }
+      }
+    });
+
+    function render() {
+      const d = DATA[select.value];
+      chart.data.labels = d.categories;
+      chart.data.datasets[0].data = d.churn_yes;
+      chart.data.datasets[1].data = d.churn_no;
+      chart.update();
+      insight.textContent = "Nhóm có tỷ lệ rời bỏ cao nhất: " + d.categories[0] + " (" +
+        d.churn_yes[0].toFixed(2) + "%, " + d.customers[0].toLocaleString("vi-VN") + " khách).";
+    }
+    select.addEventListener("change", render);
+    render();
+  </script>
+</body>
+</html>

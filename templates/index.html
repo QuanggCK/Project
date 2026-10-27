@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Telco Churn – Tổng quan dữ liệu</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Những yếu tố nào liên quan đến việc khách hàng rời bỏ?</h1>
+      <p class="sub">Bước 1 · Đọc và kiểm tra dữ liệu Telco Customer Churn</p>
+      <nav><a href="{{ url_for('index') }}" class="active">Tổng quan dữ liệu</a><a href="{{ url_for('factors') }}">Tỷ lệ theo nhóm</a></nav>
+    </header>
+
+    <section class="summary">
+      <div><strong>{{ "{:,}".format(n_rows) }}</strong><span>khách hàng</span></div>
+      <div><strong>{{ n_cols }}</strong><span>cột</span></div>
+      <div><strong>{{ duplicated_ids }}</strong><span>customerID trùng</span></div>
+    </section>
+
+    <section>
+      <h2>Phân bố biến mục tiêu (Churn)</h2>
+      <table class="narrow">
+        <thead><tr><th>Churn</th><th>Số khách</th><th>Tỷ lệ (%)</th></tr></thead>
+        <tbody>
+        {% for r in churn %}
+          <tr><td>{{ r['Churn'] }}</td><td>{{ r['count'] }}</td><td>{{ r['percent'] }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Cấu trúc các cột</h2>
+      <p class="note">Cột "blank" đếm ô chỉ chứa khoảng trắng, loại thiếu dữ liệu mà <code>isna()</code> không phát hiện được.</p>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Cột</th><th>Kiểu dữ liệu</th><th>Thiếu (NaN)</th><th>Ô trống (blank)</th><th>Giá trị khác nhau</th></tr></thead>
+          <tbody>
+          {% for c in columns %}
+            <tr class="{{ 'flag' if c['blank'] > 0 or c['missing'] > 0 else '' }}">
+              <td>{{ c['column'] }}</td><td>{{ c['dtype'] }}</td>
+              <td>{{ c['missing'] }}</td><td>{{ c['blank'] }}</td><td>{{ c['unique'] }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>10 dòng đầu tiên</h2>
+      <div class="scroll">
+        <table>
+          <thead><tr>{% for h in head_cols %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+          <tbody>
+          {% for row in head_rows %}
+            <tr>{% for v in row %}<td>{{ v }}</td>{% endfor %}</tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
