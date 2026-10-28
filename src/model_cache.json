@@ -1,0 +1,179 @@
+{
+  "n_train": 5634,
+  "n_test": 1409,
+  "baseline_acc": 0.7346,
+  "results": [
+    {
+      "model": "Logistic Regression",
+      "cv_auc": 0.8459,
+      "cv_auc_std": 0.0124,
+      "accuracy": 0.7381,
+      "precision": 0.5043,
+      "recall": 0.7834,
+      "f1": 0.6136,
+      "roc_auc": 0.8417,
+      "tn": 747,
+      "fp": 288,
+      "fn": 81,
+      "tp": 293
+    },
+    {
+      "model": "Random Forest",
+      "cv_auc": 0.8447,
+      "cv_auc_std": 0.01,
+      "accuracy": 0.7743,
+      "precision": 0.5556,
+      "recall": 0.7487,
+      "f1": 0.6378,
+      "roc_auc": 0.8443,
+      "tn": 811,
+      "fp": 224,
+      "fn": 94,
+      "tp": 280
+    },
+    {
+      "model": "Gradient Boosting",
+      "cv_auc": 0.8473,
+      "cv_auc_std": 0.0118,
+      "accuracy": 0.7431,
+      "precision": 0.5101,
+      "recall": 0.8128,
+      "f1": 0.6268,
+      "roc_auc": 0.8427,
+      "tn": 743,
+      "fp": 292,
+      "fn": 70,
+      "tp": 304
+    }
+  ],
+  "best_name": "Gradient Boosting",
+  "top_coef": [
+    {
+      "feature": "Contract = Two year",
+      "coef": -1.4125,
+      "odds_ratio": 0.2435
+    },
+    {
+      "feature": "InternetService = Fiber optic",
+      "coef": 1.2224,
+      "odds_ratio": 3.3952
+    },
+    {
+      "feature": "tenure",
+      "coef": -1.1562,
+      "odds_ratio": 0.3147
+    },
+    {
+      "feature": "Contract = One year",
+      "coef": -0.7153,
+      "odds_ratio": 0.4891
+    },
+    {
+      "feature": "MonthlyCharges",
+      "coef": -0.5462,
+      "odds_ratio": 0.5792
+    },
+    {
+      "feature": "TotalCharges",
+      "coef": 0.4865,
+      "odds_ratio": 1.6267
+    },
+    {
+      "feature": "StreamingMovies = Yes",
+      "coef": 0.4206,
+      "odds_ratio": 1.5229
+    },
+    {
+      "feature": "PaymentMethod = Electronic check",
+      "coef": 0.4025,
+      "odds_ratio": 1.4955
+    },
+    {
+      "feature": "StreamingTV = Yes",
+      "coef": 0.3954,
+      "odds_ratio": 1.4849
+    },
+    {
+      "feature": "PhoneService = Yes",
+      "coef": -0.348,
+      "odds_ratio": 0.7061
+    },
+    {
+      "feature": "PaperlessBilling = Yes",
+      "coef": 0.3364,
+      "odds_ratio": 1.4
+    },
+    {
+      "feature": "OnlineSecurity = Yes",
+      "coef": -0.3349,
+      "odds_ratio": 0.7154
+    },
+    {
+      "feature": "MultipleLines = Yes",
+      "coef": 0.3247,
+      "odds_ratio": 1.3837
+    },
+    {
+      "feature": "TechSupport = Yes",
+      "coef": -0.2686,
+      "odds_ratio": 0.7645
+    },
+    {
+      "feature": "Dependents = Yes",
+      "coef": -0.2312,
+      "odds_ratio": 0.7936
+    }
+  ],
+  "top_perm": [
+    {
+      "feature": "tenure",
+      "importance": 0.0795,
+      "std": 0.0044
+    },
+    {
+      "feature": "Contract",
+      "importance": 0.0607,
+      "std": 0.0048
+    },
+    {
+      "feature": "InternetService",
+      "importance": 0.0433,
+      "std": 0.0105
+    },
+    {
+      "feature": "TotalCharges",
+      "importance": 0.0038,
+      "std": 0.0009
+    },
+    {
+      "feature": "PaymentMethod",
+      "importance": 0.0037,
+      "std": 0.001
+    },
+    {
+      "feature": "StreamingMovies",
+      "importance": 0.0028,
+      "std": 0.0004
+    },
+    {
+      "feature": "TechSupport",
+      "importance": 0.0028,
+      "std": 0.0022
+    },
+    {
+      "feature": "OnlineSecurity",
+      "importance": 0.002,
+      "std": 0.0007
+    },
+    {
+      "feature": "SeniorCitizen",
+      "importance": 0.0012,
+      "std": 0.0006
+    },
+    {
+      "feature": "PaperlessBilling",
+      "importance": 0.0012,
+      "std": 0.0012
+    }
+  ]
+}

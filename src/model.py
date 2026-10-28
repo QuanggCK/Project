@@ -1,5 +1,12 @@
 """Huấn luyện, so sánh mô hình dự đoán churn và xác định các yếu tố liên quan."""
+import sys
 from functools import lru_cache
+from pathlib import Path
+
+# Đảm bảo import được khi chạy trực tiếp file từ IDE (VS Code) hoặc dòng lệnh
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 import numpy as np
 import pandas as pd
@@ -40,9 +47,19 @@ def _pretty(name: str) -> str:
     return f"{col} = {level}" if col else name
 
 
+CACHE_FILE = ROOT_DIR / "src" / "model_cache.json"
+
+
 @lru_cache(maxsize=1)
-def run() -> dict:
-    """Chạy toàn bộ quy trình (kết quả được cache sau lần chạy đầu tiên)."""
+def run(use_cache: bool = True) -> dict:
+    """Chạy toàn bộ quy trình (hoặc nạp tức thì từ cache nếu đã tính sẵn)."""
+    if use_cache and CACHE_FILE.exists():
+        try:
+            import json
+            return json.loads(CACHE_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
     df = clean(load_raw())
     X = df.drop(columns=["customerID", "Churn"])
     y = (df["Churn"] == "Yes").astype(int)
@@ -109,7 +126,7 @@ def run() -> dict:
     }).sort_values("importance", ascending=False)
     top_perm = perm_df.head(10).round(4).to_dict("records")
 
-    return {
+    out = {
         "n_train": len(X_train), "n_test": len(X_test),
         "baseline_acc": baseline_acc,
         "results": results,
@@ -117,6 +134,14 @@ def run() -> dict:
         "top_coef": top_coef,
         "top_perm": top_perm,
     }
+
+    try:
+        import json
+        CACHE_FILE.write_text(json.dumps(out, indent=2, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+
+    return out
 
 
 if __name__ == "__main__":
