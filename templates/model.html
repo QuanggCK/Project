@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Telco Churn – Mô hình dự đoán</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Những yếu tố nào liên quan đến việc khách hàng rời bỏ?</h1>
+      <p class="sub">Bước 3 · Mô hình dự đoán churn bằng scikit-learn</p>
+      {% set active = 'model' %}{% include '_nav.html' %}
+    </header>
+
+    <section>
+      <h2>So sánh mô hình</h2>
+      <p class="note">
+        Chia dữ liệu stratified: {{ "{:,}".format(r.n_train) }} khách để huấn luyện, {{ "{:,}".format(r.n_test) }} khách để kiểm tra.
+        Mô hình luôn đoán "ở lại" đạt accuracy {{ (r.baseline_acc * 100)|round(2) }}%, vì vậy accuracy không phải thước đo chính.
+        Cột "CV ROC-AUC" là trung bình 5-fold trên tập huấn luyện, các cột còn lại tính trên tập kiểm tra.
+      </p>
+      <div class="scroll">
+        <table>
+          <thead><tr>
+            <th>Mô hình</th><th>CV ROC-AUC</th><th>ROC-AUC</th><th>Accuracy</th>
+            <th>Precision</th><th>Recall</th><th>F1</th>
+          </tr></thead>
+          <tbody>
+          {% for m in r.results %}
+            <tr>
+              <td>{{ m.model }}</td>
+              <td>{{ m.cv_auc }} ± {{ m.cv_auc_std }}</td>
+              <td>{{ m.roc_auc }}</td><td>{{ m.accuracy }}</td>
+              <td>{{ m.precision }}</td><td>{{ m.recall }}</td><td>{{ m.f1 }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="note">Chênh lệch ROC-AUC giữa ba mô hình nhỏ hơn độ lệch chuẩn qua các fold, nên chưa thể kết luận mô hình nào tốt hơn rõ rệt.</p>
+    </section>
+
+    <section>
+      <h2>Ma trận nhầm lẫn (tập kiểm tra)</h2>
+      <div class="cm-grid">
+        {% for m in r.results %}
+        <div>
+          <h3>{{ m.model }}</h3>
+          <table class="cm">
+            <thead><tr><th></th><th>Đoán: ở lại</th><th>Đoán: rời bỏ</th></tr></thead>
+            <tbody>
+              <tr><th>Thực tế: ở lại</th><td>{{ m.tn }}</td><td>{{ m.fp }}</td></tr>
+              <tr><th>Thực tế: rời bỏ</th><td>{{ m.fn }}</td><td>{{ m.tp }}</td></tr>
+            </tbody>
+          </table>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section>
+      <h2>Hệ số Logistic Regression</h2>
+      <p class="note">
+        Hệ số dương (đỏ) nghĩa là khả năng rời bỏ cao hơn, hệ số âm (xanh) là thấp hơn, khi các yếu tố khác giữ nguyên.
+        Biến số đã được chuẩn hóa nên hệ số của <code>tenure</code>, <code>MonthlyCharges</code>, <code>TotalCharges</code> tính trên mỗi 1 độ lệch chuẩn.
+        Nhóm tham chiếu của biến phân loại là nhóm đầu tiên theo thứ tự chữ cái (ví dụ Contract so với Month-to-month, InternetService so với DSL).
+      </p>
+      <div class="chart-box"><canvas id="coefChart"></canvas></div>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Đặc trưng</th><th>Hệ số</th><th>Odds ratio</th></tr></thead>
+          <tbody>
+          {% for c in r.top_coef %}
+            <tr><td>{{ c.feature }}</td><td>{{ c.coef }}</td><td>{{ c.odds_ratio }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="note">
+        <code>tenure</code>, <code>MonthlyCharges</code> và <code>TotalCharges</code> tương quan mạnh với nhau,
+        nên dấu của từng hệ số riêng lẻ (ví dụ MonthlyCharges âm) cần diễn giải thận trọng.
+      </p>
+    </section>
+
+    <section>
+      <h2>Mức độ quan trọng của từng yếu tố (permutation importance)</h2>
+      <p class="note">
+        Tính cho mô hình có CV ROC-AUC cao nhất ({{ r.best_name }}), trên tập kiểm tra.
+        Giá trị là mức ROC-AUC giảm đi khi xáo trộn ngẫu nhiên một biến, nên biến càng quan trọng thì giá trị càng lớn.
+        Đây là mức độ liên quan trong mô hình, không chứng minh quan hệ nhân quả.
+      </p>
+      <div class="chart-box"><canvas id="permChart"></canvas></div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    const COEF = {{ r.top_coef|tojson }};
+    const PERM = {{ r.top_perm|tojson }};
+    const css = getComputedStyle(document.documentElement);
+    const textColor = css.getPropertyValue("--text").trim();
+    const gridColor = css.getPropertyValue("--line").trim();
+
+    function axisOpts(title) {
+      return {
+        x: { title: { display: true, text: title, color: textColor }, ticks: { color: textColor }, grid: { color: gridColor } },
+        y: { ticks: { color: textColor }, grid: { display: false } }
+      };
+    }
+
+    new Chart(document.getElementById("coefChart"), {
+      type: "bar",
+      data: {
+        labels: COEF.map(function (c) { return c.feature; }),
+        datasets: [{
+          label: "Hệ số",
+          data: COEF.map(function (c) { return c.coef; }),
+          backgroundColor: COEF.map(function (c) { return c.coef > 0 ? "#d1495b" : "#3d8fb8"; })
+        }]
+      },
+      options: {
+        indexAxis: "y", responsive: true, maintainAspectRatio: false,
+        scales: axisOpts("Hệ số (log-odds)"),
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: function (ctx) {
+            return "Hệ số " + ctx.parsed.x.toFixed(3) + " · odds ratio " + COEF[ctx.dataIndex].odds_ratio.toFixed(2);
+          } } }
+        }
+      }
+    });
+
+    new Chart(document.getElementById("permChart"), {
+      type: "bar",
+      data: {
+        labels: PERM.map(function (p) { return p.feature; }),
+        datasets: [{
+          label: "ROC-AUC giảm",
+          data: PERM.map(function (p) { return p.importance; }),
+          backgroundColor: "#3d8fb8"
+        }]
+      },
+      options: {
+        indexAxis: "y", responsive: true, maintainAspectRatio: false,
+        scales: axisOpts("Mức ROC-AUC giảm khi xáo trộn biến"),
+        plugins: { legend: { display: false } }
+      }
+    });
+  </script>
+</body>
+</html>

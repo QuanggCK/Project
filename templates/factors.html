@@ -11,7 +11,7 @@
     <header>
       <h1>Những yếu tố nào liên quan đến việc khách hàng rời bỏ?</h1>
       <p class="sub">Bước 2 · Tỷ lệ rời bỏ và ở lại theo từng nhóm khách hàng</p>
-      <nav><a href="{{ url_for('index') }}">Tổng quan dữ liệu</a><a href="{{ url_for('factors') }}" class="active">Tỷ lệ theo nhóm</a></nav>
+      {% set active = 'factors' %}{% include '_nav.html' %}
     </header>
 
     <section>

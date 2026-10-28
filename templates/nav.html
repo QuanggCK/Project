@@ -1,0 +1,5 @@
+<nav>
+  <a href="{{ url_for('index') }}" class="{{ 'active' if active == 'index' else '' }}">Tổng quan dữ liệu</a>
+  <a href="{{ url_for('factors') }}" class="{{ 'active' if active == 'factors' else '' }}">Tỷ lệ theo nhóm</a>
+  <a href="{{ url_for('model_page') }}" class="{{ 'active' if active == 'model' else '' }}">Mô hình dự đoán</a>
+</nav>

@@ -11,7 +11,7 @@
     <header>
       <h1>Những yếu tố nào liên quan đến việc khách hàng rời bỏ?</h1>
       <p class="sub">Bước 1 · Đọc và kiểm tra dữ liệu Telco Customer Churn</p>
-      <nav><a href="{{ url_for('index') }}" class="active">Tổng quan dữ liệu</a><a href="{{ url_for('factors') }}">Tỷ lệ theo nhóm</a></nav>
+      {% set active = 'index' %}{% include '_nav.html' %}
     </header>
 
     <section class="summary">

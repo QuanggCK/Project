@@ -1,11 +1,12 @@
 from flask import Flask, render_template
- 
+
 from src.analysis import churn_rate_by_category
 from src.data_loader import load_raw, summarize
- 
+from src.model import run as run_model
+
 app = Flask(__name__)
- 
- 
+
+
 @app.route("/")
 def index():
     df = load_raw()
@@ -20,13 +21,18 @@ def index():
         head_cols=list(info["head"].columns),
         head_rows=info["head"].values.tolist(),
     )
- 
- 
+
+
 @app.route("/factors")
 def factors():
     df = load_raw()
     return render_template("factors.html", data=churn_rate_by_category(df))
- 
- 
+
+
+@app.route("/model")
+def model_page():
+    return render_template("model.html", r=run_model())
+
+
 if __name__ == "__main__":
     app.run(debug=True)
