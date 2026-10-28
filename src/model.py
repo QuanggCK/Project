@@ -120,6 +120,9 @@ def run() -> dict:
 
 
 if __name__ == "__main__":
+    import sys
+    if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
+        sys.stdout.reconfigure(encoding="utf-8")
     out = run()
     print(pd.DataFrame(out["results"]).to_string(index=False))
     print("\nBaseline accuracy:", out["baseline_acc"])
