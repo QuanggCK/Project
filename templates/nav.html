@@ -1,5 +1,40 @@
-<nav>
-  <a href="{{ url_for('index') }}" class="{{ 'active' if active == 'index' else '' }}">Tổng quan dữ liệu</a>
-  <a href="{{ url_for('factors') }}" class="{{ 'active' if active == 'factors' else '' }}">Tỷ lệ theo nhóm</a>
-  <a href="{{ url_for('model_page') }}" class="{{ 'active' if active == 'model' else '' }}">Mô hình dự đoán</a>
+{#
+  =============================================================================
+  TỆP: nav.html
+  MỤC ĐÍCH: 
+    - Đây là một thành phần giao diện dùng chung (reusable navigation component)
+      trong hệ thống template Jinja2 của ứng dụng Flask.
+    - Tạo thanh điều hướng (menu bar) cố định ở đầu trang để người dùng dễ dàng
+      chuyển đổi giữa 3 bước phân tích chính của dự án:
+        1. "Tổng quan dữ liệu" (Route: index -> index.html)
+        2. "Tỷ lệ theo nhóm"   (Route: factors -> factors.html)
+        3. "Mô hình dự đoán"   (Route: model_page -> model.html)
+    - Được nhúng vào các trang HTML khác thông qua cú pháp: {% include 'nav.html' %}
+    - Hỗ trợ đánh dấu tab đang được chọn: Trang cha sẽ khai báo biến `active`
+      (ví dụ: {% set active = 'index' %}) trước khi include, template này sẽ
+      tự động gắn thêm class CSS "active" vào thẻ <a> tương ứng để làm nổi bật.
+  =============================================================================
+#}
+
+<nav class="main-navigation">
+  {# Tab 1: Trang chủ - Khám phá cấu trúc, kích thước và phân bố dữ liệu thô #}
+  <a href="{{ url_for('index') }}" 
+     class="{{ 'active' if active == 'index' else '' }}"
+     title="Xem thông tin tổng quan, cấu trúc các cột và mẫu dữ liệu ban đầu">
+    Tổng quan dữ liệu
+  </a>
+
+  {# Tab 2: Phân tích tương quan đơn biến - Tỷ lệ rời bỏ (Churn) theo từng nhóm thuộc tính #}
+  <a href="{{ url_for('factors') }}" 
+     class="{{ 'active' if active == 'factors' else '' }}"
+     title="Xem biểu đồ tỷ lệ rời bỏ và ở lại theo từng dịch vụ, hợp đồng, nhân khẩu học">
+    Tỷ lệ theo nhóm
+  </a>
+
+  {# Tab 3: Máy học - So sánh các mô hình dự đoán và phân tích tầm quan trọng của các biến #}
+  <a href="{{ url_for('model_page') }}" 
+     class="{{ 'active' if active == 'model' else '' }}"
+     title="Xem kết quả huấn luyện mô hình dự đoán (Logistic Regression, Random Forest, Gradient Boosting)">
+    Mô hình dự đoán
+  </a>
 </nav>

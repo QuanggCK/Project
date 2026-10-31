@@ -4,55 +4,98 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Telco Churn – Mô hình dự đoán</title>
+  <!-- Nhúng stylesheet định dạng giao diện chung -->
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <main>
+    <!-- PHẦN ĐẦU TRANG (HEADER): Tiêu đề và nhúng thanh menu điều hướng -->
     <header>
       <h1>Những yếu tố nào liên quan đến việc khách hàng rời bỏ?</h1>
       <p class="sub">Bước 3 · Mô hình dự đoán churn bằng scikit-learn</p>
+      
+      {# Đánh dấu tab 'model' là đang hoạt động và nạp component nav.html #}
       {% set active = 'model' %}{% include 'nav.html' %}
     </header>
 
+    <!-- KHỐI 1: SO SÁNH HIỆU NĂNG CÁC MÔ HÌNH MÁY HỌC -->
     <section>
       <h2>So sánh mô hình</h2>
       <p class="note">
-        Chia dữ liệu stratified: {{ "{:,}".format(r.n_train) }} khách để huấn luyện, {{ "{:,}".format(r.n_test) }} khách để kiểm tra.
-        Mô hình luôn đoán "ở lại" đạt accuracy {{ (r.baseline_acc * 100)|round(2) }}%, vì vậy accuracy không phải thước đo chính.
-        Cột "CV ROC-AUC" là trung bình 5-fold trên tập huấn luyện, các cột còn lại tính trên tập kiểm tra.
+        <strong>Phương pháp phân chia:</strong> Dữ liệu được chia theo tỷ lệ phân tầng (Stratified Split): 
+        {{ "{:,}".format(r.n_train) }} khách để huấn luyện (Train), {{ "{:,}".format(r.n_test) }} khách để kiểm tra (Test).<br>
+        <strong>Mức tham chiếu (Baseline):</strong> Nếu một mô hình luôn đoán tất cả khách đều "ở lại" (lớp đa số), 
+        nó sẽ đạt Accuracy là <strong>{{ (r.baseline_acc * 100)|round(2) }}%</strong>. Vì vậy, trong bài toán mất cân bằng mẫu, 
+        Accuracy không phản ánh chính xác hiệu quả; ta ưu tiên xem xét <strong>ROC-AUC</strong> và <strong>Recall/F1</strong>.<br>
+        <strong>Ghi chú số liệu:</strong> Cột "CV ROC-AUC" là trung bình kiểm định chéo 5-fold trên tập huấn luyện; 
+        các chỉ số còn lại được đo lường trên tập kiểm tra độc lập.
       </p>
+      
       <div class="scroll">
         <table>
-          <thead><tr>
-            <th>Mô hình</th><th>CV ROC-AUC</th><th>ROC-AUC</th><th>Accuracy</th>
-            <th>Precision</th><th>Recall</th><th>F1</th>
-          </tr></thead>
+          <thead>
+            <tr>
+              <th>Mô hình</th>
+              <th>CV ROC-AUC (Train)</th>
+              <th>ROC-AUC (Test)</th>
+              <th>Accuracy</th>
+              <th>Precision</th>
+              <th>Recall</th>
+              <th>F1-Score</th>
+            </tr>
+          </thead>
           <tbody>
           {% for m in r.results %}
             <tr>
-              <td>{{ m.model }}</td>
+              <td><strong>{{ m.model }}</strong></td>
               <td>{{ m.cv_auc }} ± {{ m.cv_auc_std }}</td>
-              <td>{{ m.roc_auc }}</td><td>{{ m.accuracy }}</td>
-              <td>{{ m.precision }}</td><td>{{ m.recall }}</td><td>{{ m.f1 }}</td>
+              <td><strong>{{ m.roc_auc }}</strong></td>
+              <td>{{ m.accuracy }}</td>
+              <td>{{ m.precision }}</td>
+              <td>{{ m.recall }}</td>
+              <td>{{ m.f1 }}</td>
             </tr>
           {% endfor %}
           </tbody>
         </table>
       </div>
-      <p class="note">Chênh lệch ROC-AUC giữa ba mô hình nhỏ hơn độ lệch chuẩn qua các fold, nên chưa thể kết luận mô hình nào tốt hơn rõ rệt.</p>
+      <p class="note">
+        <em>Nhận xét:</em> Chênh lệch ROC-AUC giữa ba mô hình là rất nhỏ (nhỏ hơn cả độ lệch chuẩn qua 5 fold), 
+        cho thấy hiệu năng dự đoán giữa mô hình tuyến tính và mô hình cây/boosting là tương đương nhau trên tập dữ liệu này.
+      </p>
     </section>
 
+    <!-- KHỐI 2: MA TRẬN NHẦM LẪN (CONFUSION MATRIX) TRÊN TẬP KIỂM TRA -->
     <section>
       <h2>Ma trận nhầm lẫn (tập kiểm tra)</h2>
+      <p class="note">
+        Hiển thị số lượng dự đoán đúng/sai của từng mô hình đối với hai lớp khách hàng:
+        <strong>TN</strong> (Thực tế Ở lại, Đoán Ở lại), <strong>FP</strong> (Báo động nhầm: Thực tế Ở lại nhưng Đoán Rời bỏ),
+        <strong>FN</strong> (Bỏ sót: Thực tế Rời bỏ nhưng Đoán Ở lại), <strong>TP</strong> (Bắt đúng: Thực tế Rời bỏ và Đoán Rời bỏ).
+      </p>
       <div class="cm-grid">
         {% for m in r.results %}
         <div>
           <h3>{{ m.model }}</h3>
           <table class="cm">
-            <thead><tr><th></th><th>Đoán: ở lại</th><th>Đoán: rời bỏ</th></tr></thead>
+            <thead>
+              <tr>
+                <th></th>
+                <th>Đoán: Ở lại</th>
+                <th>Đoán: Rời bỏ</th>
+              </tr>
+            </thead>
             <tbody>
-              <tr><th>Thực tế: ở lại</th><td>{{ m.tn }}</td><td>{{ m.fp }}</td></tr>
-              <tr><th>Thực tế: rời bỏ</th><td>{{ m.fn }}</td><td>{{ m.tp }}</td></tr>
+              <tr>
+                <th>Thực tế: Ở lại</th>
+                <td title="True Negative (Đoán đúng khách ở lại)">{{ m.tn }}</td>
+                <td title="False Positive (Báo động giả)">{{ m.fp }}</td>
+              </tr>
+              <tr>
+                <th>Thực tế: Rời bỏ</th>
+                <td title="False Negative (Bỏ sót khách rời bỏ)">{{ m.fn }}</td>
+                <td title="True Positive (Phát hiện đúng khách rời bỏ)">{{ m.tp }}</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -60,56 +103,90 @@
       </div>
     </section>
 
+    <!-- KHỐI 3: HỆ SỐ HỒI QUY CỦA LOGISTIC REGRESSION (ĐỘ LIÊN HỆ TUYẾN TÍNH) -->
     <section>
       <h2>Hệ số Logistic Regression</h2>
       <p class="note">
-        Hệ số dương (đỏ) nghĩa là khả năng rời bỏ cao hơn, hệ số âm (xanh) là thấp hơn, khi các yếu tố khác giữ nguyên.
-        Biến số đã được chuẩn hóa nên hệ số của <code>tenure</code>, <code>MonthlyCharges</code>, <code>TotalCharges</code> tính trên mỗi 1 độ lệch chuẩn.
-        Nhóm tham chiếu của biến phân loại là nhóm đầu tiên theo thứ tự chữ cái (ví dụ Contract so với Month-to-month, InternetService so với DSL).
+        <strong>Ý nghĩa dấu hệ số:</strong><br>
+        - <span style="color: #d1495b; font-weight: bold;">Hệ số dương (màu đỏ):</span> Làm tăng log-odds rời bỏ (khả năng khách hàng rời bỏ cao hơn).<br>
+        - <span style="color: #3d8fb8; font-weight: bold;">Hệ số âm (màu xanh):</span> Làm giảm log-odds rời bỏ (khách hàng có xu hướng ở lại lâu dài).<br>
+        <strong>Chuẩn hóa:</strong> Các biến định lượng (<code>tenure</code>, <code>MonthlyCharges</code>, <code>TotalCharges</code>) 
+        đã được đưa về thang chuẩn hóa chuẩn (StandardScaler), nên hệ số đo lường mức thay đổi trên mỗi 1 độ lệch chuẩn.<br>
+        <strong>Odds Ratio (Tỉ số khả dĩ - \(e^{\beta}\)):</strong> 
+        Giá trị > 1 làm tăng nguy cơ rời bỏ; giá trị < 1 giúp bảo vệ khách hàng không rời bỏ.
       </p>
+      
+      <!-- Biểu đồ thanh nằm ngang hiển thị độ lớn và chiều hướng của hệ số -->
       <div class="chart-box"><canvas id="coefChart"></canvas></div>
+      
       <div class="scroll">
         <table>
-          <thead><tr><th>Đặc trưng</th><th>Hệ số</th><th>Odds ratio</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Đặc trưng</th>
+              <th>Hệ số (\(\beta\))</th>
+              <th>Odds ratio (\(e^{\beta}\))</th>
+            </tr>
+          </thead>
           <tbody>
           {% for c in r.top_coef %}
-            <tr><td>{{ c.feature }}</td><td>{{ c.coef }}</td><td>{{ c.odds_ratio }}</td></tr>
+            <tr>
+              <td><code>{{ c.feature }}</code></td>
+              <td>{{ c.coef }}</td>
+              <td>{{ c.odds_ratio }}</td>
+            </tr>
           {% endfor %}
           </tbody>
         </table>
       </div>
       <p class="note">
-        <code>tenure</code>, <code>MonthlyCharges</code> và <code>TotalCharges</code> tương quan mạnh với nhau,
-        nên dấu của từng hệ số riêng lẻ (ví dụ MonthlyCharges âm) cần diễn giải thận trọng.
+        <em>Cảnh báo đa cộng tuyến:</em> <code>tenure</code> (thời gian gắn bó), <code>MonthlyCharges</code> (cước tháng) và 
+        <code>TotalCharges</code> (tổng cước) có quan hệ mật thiết với nhau (\(Total \approx tenure \times Monthly\)), 
+        nên dấu của từng hệ số riêng lẻ cần được diễn giải hết sức thận trọng trong phân tích nhân quả.
       </p>
     </section>
 
+    <!-- KHỐI 4: ĐỘ QUAN TRỌNG CỦA ĐẶC TRƯNG BẰNG PERMUTATION IMPORTANCE -->
     <section>
-      <h2>Mức độ quan trọng của từng yếu tố (permutation importance)</h2>
+      <h2>Mức độ quan trọng của từng yếu tố (Permutation Importance)</h2>
       <p class="note">
-        Tính cho mô hình có CV ROC-AUC cao nhất ({{ r.best_name }}), trên tập kiểm tra.
-        Giá trị là mức ROC-AUC giảm đi khi xáo trộn ngẫu nhiên một biến, nên biến càng quan trọng thì giá trị càng lớn.
-        Đây là mức độ liên quan trong mô hình, không chứng minh quan hệ nhân quả.
+        Được tính trên tập kiểm tra bằng mô hình có CV ROC-AUC cao nhất (<strong>{{ r.best_name }}</strong>).<br>
+        <strong>Cơ chế:</strong> Xáo trộn ngẫu nhiên từng cột dữ liệu (làm mất mối liên hệ giữa cột đó với nhãn) và đo lường 
+        mức sụt giảm của điểm ROC-AUC. Điểm ROC-AUC sụt giảm càng nhiều thì đặc trưng đó càng đóng vai trò quan trọng.<br>
+        <em>Lưu ý:</em> Đây là mức độ liên hệ và phụ thuộc trong mô hình máy học, không mang ý nghĩa là bằng chứng của quan hệ nhân quả tuyệt đối.
       </p>
       <div class="chart-box"><canvas id="permChart"></canvas></div>
     </section>
   </main>
 
+  <!-- Nạp thư viện vẽ biểu đồ Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script>
+    // 1. Nhận dữ liệu hệ số Logistic Regression và Permutation Importance từ Flask
     const COEF = {{ r.top_coef|tojson }};
     const PERM = {{ r.top_perm|tojson }};
+    
+    // Đọc màu sắc chủ đạo từ biến CSS để biểu đồ đồng bộ màu sắc với web
     const css = getComputedStyle(document.documentElement);
     const textColor = css.getPropertyValue("--text").trim();
     const gridColor = css.getPropertyValue("--line").trim();
 
+    // Hàm tiện ích tạo cấu hình trục tọa độ cho biểu đồ thanh ngang
     function axisOpts(title) {
       return {
-        x: { title: { display: true, text: title, color: textColor }, ticks: { color: textColor }, grid: { color: gridColor } },
-        y: { ticks: { color: textColor }, grid: { display: false } }
+        x: { 
+          title: { display: true, text: title, color: textColor }, 
+          ticks: { color: textColor }, 
+          grid: { color: gridColor } 
+        },
+        y: { 
+          ticks: { color: textColor }, 
+          grid: { display: false } 
+        }
       };
     }
 
+    // 2. Khởi tạo biểu đồ thanh ngang cho các hệ số Logistic Regression
     new Chart(document.getElementById("coefChart"), {
       type: "bar",
       data: {
@@ -117,21 +194,29 @@
         datasets: [{
           label: "Hệ số",
           data: COEF.map(function (c) { return c.coef; }),
+          // Tô màu đỏ nếu hệ số dương (tăng nguy cơ rời bỏ), màu xanh nếu hệ số âm (giảm nguy cơ)
           backgroundColor: COEF.map(function (c) { return c.coef > 0 ? "#d1495b" : "#3d8fb8"; })
         }]
       },
       options: {
-        indexAxis: "y", responsive: true, maintainAspectRatio: false,
+        indexAxis: "y", // Biểu đồ dạng thanh nằm ngang
+        responsive: true, 
+        maintainAspectRatio: false,
         scales: axisOpts("Hệ số (log-odds)"),
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: function (ctx) {
-            return "Hệ số " + ctx.parsed.x.toFixed(3) + " · odds ratio " + COEF[ctx.dataIndex].odds_ratio.toFixed(2);
-          } } }
+          tooltip: { 
+            callbacks: { 
+              label: function (ctx) {
+                return "Hệ số " + ctx.parsed.x.toFixed(3) + " · Odds ratio " + COEF[ctx.dataIndex].odds_ratio.toFixed(2);
+              } 
+            } 
+          }
         }
       }
     });
 
+    // 3. Khởi tạo biểu đồ thanh ngang cho Permutation Importance
     new Chart(document.getElementById("permChart"), {
       type: "bar",
       data: {
@@ -143,7 +228,9 @@
         }]
       },
       options: {
-        indexAxis: "y", responsive: true, maintainAspectRatio: false,
+        indexAxis: "y", // Biểu đồ dạng thanh nằm ngang
+        responsive: true, 
+        maintainAspectRatio: false,
         scales: axisOpts("Mức ROC-AUC giảm khi xáo trộn biến"),
         plugins: { legend: { display: false } }
       }

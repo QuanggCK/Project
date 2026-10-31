@@ -4,45 +4,91 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Telco Churn – Tổng quan dữ liệu</title>
+  <!-- Nhúng file định dạng CSS cho toàn bộ giao diện -->
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <main>
+    <!-- PHẦN ĐẦU TRANG (HEADER): Tiêu đề trang và thanh điều hướng dùng chung -->
     <header>
       <h1>Những yếu tố nào liên quan đến việc khách hàng rời bỏ?</h1>
       <p class="sub">Bước 1 · Đọc và kiểm tra dữ liệu Telco Customer Churn</p>
+      
+      {# 
+        Thiết lập biến active = 'index' và nhúng file nav.html vào.
+        Nhờ đó, mục 'Tổng quan dữ liệu' trong menu sẽ tự động sáng/active.
+      #}
       {% set active = 'index' %}{% include 'nav.html' %}
     </header>
 
+    <!-- KHỐI THỐNG KÊ NHANH (SUMMARY CARDS): Hiển thị số lượng dòng, cột và ID trùng lặp -->
     <section class="summary">
-      <div><strong>{{ "{:,}".format(n_rows) }}</strong><span>khách hàng</span></div>
-      <div><strong>{{ n_cols }}</strong><span>cột</span></div>
-      <div><strong>{{ duplicated_ids }}</strong><span>customerID trùng</span></div>
+      <div>
+        <strong>{{ "{:,}".format(n_rows) }}</strong>
+        <span>khách hàng (dòng)</span>
+      </div>
+      <div>
+        <strong>{{ n_cols }}</strong>
+        <span>cột đặc trưng</span>
+      </div>
+      <div>
+        <strong>{{ duplicated_ids }}</strong>
+        <span>customerID trùng lặp</span>
+      </div>
     </section>
 
+    <!-- KHỐI 1: PHÂN BỐ CỦA BIẾN MỤC TIÊU (CHURN) -->
+    <!-- Giúp quan sát mức độ mất cân bằng giữa khách hàng Ở lại (No) và Rời bỏ (Yes) -->
     <section>
       <h2>Phân bố biến mục tiêu (Churn)</h2>
       <table class="narrow">
-        <thead><tr><th>Churn</th><th>Số khách</th><th>Tỷ lệ (%)</th></tr></thead>
+        <thead>
+          <tr>
+            <th>Trạng thái (Churn)</th>
+            <th>Số lượng khách</th>
+            <th>Tỷ lệ (%)</th>
+          </tr>
+        </thead>
         <tbody>
         {% for r in churn %}
-          <tr><td>{{ r['Churn'] }}</td><td>{{ r['count'] }}</td><td>{{ r['percent'] }}</td></tr>
+          <tr>
+            <td><strong>{{ r['Churn'] }}</strong></td>
+            <td>{{ "{:,}".format(r['count']) }}</td>
+            <td>{{ r['percent'] }}%</td>
+          </tr>
         {% endfor %}
         </tbody>
       </table>
     </section>
 
+    <!-- KHỐI 2: CẤU TRÚC CHI TIẾT CỦA TỪNG CỘT DỮ LIỆU -->
+    <!-- Liệt kê tên cột, kiểu dữ liệu, số ô thiếu (NaN), ô trống (blank spaces) và số giá trị phân biệt -->
     <section>
       <h2>Cấu trúc các cột</h2>
-      <p class="note">Cột "blank" đếm ô chỉ chứa khoảng trắng, loại thiếu dữ liệu mà <code>isna()</code> không phát hiện được.</p>
+      <p class="note">
+        <em>Lưu ý:</em> Cột <strong>"Ô trống (blank)"</strong> đếm các ô chỉ chứa ký tự khoảng trắng (" "), 
+        đây là dạng dữ liệu thiếu ẩn mà hàm <code>isna()</code> thông thường của Pandas không thể phát hiện.
+      </p>
       <div class="scroll">
         <table>
-          <thead><tr><th>Cột</th><th>Kiểu dữ liệu</th><th>Thiếu (NaN)</th><th>Ô trống (blank)</th><th>Giá trị khác nhau</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Tên cột</th>
+              <th>Kiểu dữ liệu</th>
+              <th>Thiếu (NaN)</th>
+              <th>Ô trống (blank)</th>
+              <th>Giá trị khác nhau</th>
+            </tr>
+          </thead>
           <tbody>
           {% for c in columns %}
+            {# Gắn class 'flag' để tô màu cảnh báo nếu cột có dữ liệu thiếu hoặc ô trống #}
             <tr class="{{ 'flag' if c['blank'] > 0 or c['missing'] > 0 else '' }}">
-              <td>{{ c['column'] }}</td><td>{{ c['dtype'] }}</td>
-              <td>{{ c['missing'] }}</td><td>{{ c['blank'] }}</td><td>{{ c['unique'] }}</td>
+              <td><code>{{ c['column'] }}</code></td>
+              <td>{{ c['dtype'] }}</td>
+              <td>{{ c['missing'] }}</td>
+              <td>{{ c['blank'] }}</td>
+              <td>{{ c['unique'] }}</td>
             </tr>
           {% endfor %}
           </tbody>
@@ -50,14 +96,26 @@
       </div>
     </section>
 
+    <!-- KHỐI 3: DỮ LIỆU MẪU (10 DÒNG ĐẦU TIÊN) -->
+    <!-- Cho phép người dùng trực tiếp quan sát các bản ghi thực tế trong tập dữ liệu thô -->
     <section>
-      <h2>10 dòng đầu tiên</h2>
+      <h2>10 dòng đầu tiên của tập dữ liệu gốc</h2>
       <div class="scroll">
         <table>
-          <thead><tr>{% for h in head_cols %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+          <thead>
+            <tr>
+              {% for h in head_cols %}
+                <th>{{ h }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
           <tbody>
           {% for row in head_rows %}
-            <tr>{% for v in row %}<td>{{ v }}</td>{% endfor %}</tr>
+            <tr>
+              {% for v in row %}
+                <td>{{ v }}</td>
+              {% endfor %}
+            </tr>
           {% endfor %}
           </tbody>
         </table>

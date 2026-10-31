@@ -4,49 +4,75 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Telco Churn – Tỷ lệ rời bỏ theo nhóm</title>
+  <!-- Nhúng stylesheet định dạng giao diện chung -->
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <main>
+    <!-- PHẦN ĐẦU TRANG (HEADER): Tiêu đề và nhúng thanh menu điều hướng -->
     <header>
       <h1>Những yếu tố nào liên quan đến việc khách hàng rời bỏ?</h1>
       <p class="sub">Bước 2 · Tỷ lệ rời bỏ và ở lại theo từng nhóm khách hàng</p>
+      
+      {# Đánh dấu tab 'factors' là đang hoạt động và nạp component nav.html #}
       {% set active = 'factors' %}{% include 'nav.html' %}
     </header>
 
+    <!-- KHỐI ĐIỀU KHIỂN & BIỂU ĐỒ TƯƠNG TÁC -->
     <section>
-      <label for="feature">Chọn yếu tố cần xem</label>
+      <!-- Menu thả xuống để người dùng chọn yếu tố (đặc trưng) muốn phân tích -->
+      <label for="feature"><strong>Chọn yếu tố cần xem:</strong></label>
       <select id="feature"></select>
+
+      <!-- Đoạn văn bản tự động sinh kết luận/insight rút ra từ nhóm có tỷ lệ rời bỏ cao nhất -->
       <p id="insight" class="note"></p>
-      <div class="chart-box"><canvas id="chart"></canvas></div>
-      <p class="note">Mỗi nhóm có hai cột cộng lại 100%. Rê chuột vào cột để xem số khách hàng của nhóm.</p>
+
+      <!-- Khung chứa canvas vẽ biểu đồ cột bằng thư viện Chart.js -->
+      <div class="chart-box">
+        <canvas id="chart"></canvas>
+      </div>
+      <p class="note">
+        <em>Giải thích cách xem:</em> Mỗi nhóm danh mục có hai cột (Rời bỏ và Ở lại) cộng lại đúng 100%. 
+        Rê chuột vào từng cột để xem tổng số khách hàng thực tế thuộc nhóm đó.
+      </p>
     </section>
   </main>
 
+  <!-- Nạp thư viện Chart.js (phiên bản UMD từ CDN) để vẽ biểu đồ trực quan -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  
   <script>
+    // 1. Nhận dữ liệu đã xử lý từ Flask backend (dạng JSON object)
+    // Cấu trúc DATA: { "Contract": { "categories": [...], "churn_yes": [...], "churn_no": [...], "customers": [...] }, ... }
     const DATA = {{ data|tojson }};
     const select = document.getElementById("feature");
     const insight = document.getElementById("insight");
 
+    // 2. Điền danh sách các thuộc tính (tên cột) vào thẻ <select>
     Object.keys(DATA).forEach(function (name) {
       const opt = document.createElement("option");
       opt.value = name;
       opt.textContent = name;
       select.appendChild(opt);
     });
+
+    // Chọn giá trị mặc định ban đầu là 'Contract' (Loại hợp đồng - biến có ảnh hưởng rất lớn tới churn)
     select.value = "Contract";
 
+    // 3. Đọc màu sắc từ biến CSS trên :root để biểu đồ đồng bộ màu với giao diện website
     const css = getComputedStyle(document.documentElement);
     const textColor = css.getPropertyValue("--text").trim();
     const gridColor = css.getPropertyValue("--line").trim();
 
+    // 4. Khởi tạo đối tượng biểu đồ Chart.js dạng cột (bar chart)
     const chart = new Chart(document.getElementById("chart"), {
       type: "bar",
       data: {
         labels: [],
         datasets: [
+          // Cột màu đỏ: Tỷ lệ khách hàng rời bỏ dịch vụ (Churn = Yes)
           { label: "Rời bỏ (Churn = Yes)", data: [], backgroundColor: "#d1495b" },
+          // Cột màu xanh: Tỷ lệ khách hàng tiếp tục ở lại (Churn = No)
           { label: "Ở lại (Churn = No)", data: [], backgroundColor: "#3d8fb8" }
         ]
       },
@@ -54,9 +80,13 @@
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          x: { ticks: { color: textColor }, grid: { display: false } },
+          x: { 
+            ticks: { color: textColor }, 
+            grid: { display: false } // Ẩn đường kẻ dọc để biểu đồ thoáng hơn
+          },
           y: {
-            min: 0, max: 100,
+            min: 0, 
+            max: 100, // Thang đo trục tung từ 0% đến 100%
             title: { display: true, text: "Tỷ lệ khách hàng trong nhóm (%)", color: textColor },
             ticks: { color: textColor, callback: function (v) { return v + "%"; } },
             grid: { color: gridColor }
@@ -65,8 +95,13 @@
         plugins: {
           legend: { labels: { color: textColor } },
           tooltip: {
+            // Tùy chỉnh nội dung hiển thị khi rê chuột (tooltip)
             callbacks: {
-              label: function (ctx) { return ctx.dataset.label + ": " + ctx.parsed.y.toFixed(2) + "%"; },
+              // Hiển thị phần trăm rời bỏ/ở lại
+              label: function (ctx) { 
+                return ctx.dataset.label + ": " + ctx.parsed.y.toFixed(2) + "%"; 
+              },
+              // Hiển thị thêm thông tin cỡ mẫu (tổng số khách hàng của phân nhóm)
               afterBody: function (items) {
                 const d = DATA[select.value];
                 return "Số khách trong nhóm: " + d.customers[items[0].dataIndex].toLocaleString("vi-VN");
@@ -77,16 +112,25 @@
       }
     });
 
+    // 5. Hàm cập nhật lại biểu đồ và dòng insight khi người dùng chọn biến khác
     function render() {
       const d = DATA[select.value];
+      
+      // Cập nhật nhãn trục hoành và số liệu 2 cột
       chart.data.labels = d.categories;
       chart.data.datasets[0].data = d.churn_yes;
       chart.data.datasets[1].data = d.churn_no;
       chart.update();
+
+      // Hiển thị thông điệp nhận xét về nhóm có nguy cơ rời bỏ cao nhất (phần tử đầu tiên vì đã sort giảm dần)
       insight.textContent = "Nhóm có tỷ lệ rời bỏ cao nhất: " + d.categories[0] + " (" +
         d.churn_yes[0].toFixed(2) + "%, " + d.customers[0].toLocaleString("vi-VN") + " khách).";
     }
+
+    // Lắng nghe sự kiện thay đổi lựa chọn của người dùng trên dropdown
     select.addEventListener("change", render);
+
+    // Vẽ biểu đồ lần đầu tiên ngay khi tải trang
     render();
   </script>
 </body>
