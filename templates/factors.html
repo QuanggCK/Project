@@ -3,135 +3,321 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Telco Churn – Tỷ lệ rời bỏ theo nhóm</title>
-  <!-- Nhúng stylesheet định dạng giao diện chung -->
+  <title>Telco Churn – Phân tích yếu tố</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    .analysis-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:18px 0}
+    .metric,.panel{background:var(--card,#fff);border:1px solid var(--line,#ddd);border-radius:12px;padding:18px}
+    .metric strong{display:block;font-size:1.65rem;margin-top:6px}
+    .panel{margin:18px 0}
+    .panel h2{margin-top:0}
+    .chart-box{position:relative;height:340px;margin:14px 0}
+    .chart-box.tall{height:420px}
+    .controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0}
+    select{padding:9px;max-width:100%;min-width:220px}
+    .table-wrap{overflow-x:auto}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{padding:10px;text-align:left;border-bottom:1px solid var(--line,#ddd);white-space:nowrap}
+    th{font-weight:700}
+    .muted,.note{color:var(--muted,#666);font-size:.92rem}
+    .insight{padding:12px;background:var(--soft,#f4f6f8);border-radius:8px;margin:12px 0}
+    .status-yes{color:#c0394b;font-weight:700}.status-no{color:#27845b;font-weight:700}
+    .section-nav{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+    .section-nav a{padding:8px 12px;border:1px solid var(--line,#ddd);border-radius:20px;text-decoration:none}
+    .two-col{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+    @media(max-width:600px){.chart-box{height:280px}.panel{padding:13px}}
+  </style>
 </head>
 <body>
-  <main>
-    <!-- PHẦN ĐẦU TRANG (HEADER): Tiêu đề và nhúng thanh menu điều hướng -->
-    <header>
-      <h1>Những yếu tố nào liên quan đến việc khách hàng rời bỏ?</h1>
-      <p class="sub">Bước 2 · Tỷ lệ rời bỏ và ở lại theo từng nhóm khách hàng</p>
-      
-      {# Đánh dấu tab 'factors' là đang hoạt động và nạp component nav.html #}
-      {% set active = 'factors' %}{% include 'nav.html' %}
-    </header>
+<main>
+  <header>
+    <h1>Những yếu tố nào liên quan đến việc khách hàng rời bỏ?</h1>
+    <p class="sub">Phân tích mô tả, mối liên hệ và kiểm định thống kê trên Telco Customer Churn</p>
+    {% set active = 'factors' %}{% include 'nav.html' %}
+  </header>
 
-    <!-- KHỐI ĐIỀU KHIỂN & BIỂU ĐỒ TƯƠNG TÁC -->
-    <section>
-      <!-- Menu thả xuống để người dùng chọn yếu tố (đặc trưng) muốn phân tích -->
-      <label for="feature"><strong>Chọn yếu tố cần xem:</strong></label>
+  <nav class="section-nav" aria-label="Điều hướng phân tích">
+    <a href="#categorical">Biến phân loại</a>
+    <a href="#numerical">Biến số</a>
+    <a href="#profile">Hồ sơ khách hàng</a>
+    <a href="#association">Mức độ liên hệ</a>
+    <a href="#testing">Kiểm định</a>
+    <a href="#segments">Phân khúc</a>
+  </nav>
+
+  <section class="analysis-grid" aria-label="Tổng quan Churn">
+    <article class="metric"><span class="muted">Tổng khách hàng</span><strong>{{ (profile.Yes.customers + profile.No.customers) | int }}</strong></article>
+    <article class="metric"><span class="muted">Khách hàng rời bỏ</span><strong class="status-yes">{{ profile.Yes.customers }}</strong></article>
+    <article class="metric"><span class="muted">Khách hàng ở lại</span><strong class="status-no">{{ profile.No.customers }}</strong></article>
+    <article class="metric"><span class="muted">Tỷ lệ Churn tổng thể</span><strong>{{ "%.2f"|format(profile.Yes.share) }}%</strong></article>
+  </section>
+
+  <section id="categorical" class="panel">
+    <h2>1. Phân tích biến phân loại</h2>
+    <p class="muted">So sánh tỷ lệ rời bỏ và ở lại trong từng nhóm của biến được chọn.</p>
+    <div class="controls">
+      <label for="feature">Chọn yếu tố:</label>
       <select id="feature"></select>
+    </div>
+    <div id="categoryInsight" class="insight" aria-live="polite"></div>
+    <div class="chart-box"><canvas id="categoryChart"></canvas></div>
+    <p class="note">Mỗi nhóm có tỷ lệ Churn Yes và No cộng lại bằng 100%. Tooltip hiển thị số khách hàng.</p>
+  </section>
 
-      <!-- Đoạn văn bản tự động sinh kết luận/insight rút ra từ nhóm có tỷ lệ rời bỏ cao nhất -->
-      <p id="insight" class="note"></p>
+  <section id="numerical" class="panel">
+    <h2>2. Phân tích biến số</h2>
+    <p class="muted">So sánh các đặc trưng số giữa khách hàng rời bỏ và ở lại.</p>
+    <div class="controls">
+      <label for="numericFeature">Chọn biến:</label>
+      <select id="numericFeature">
+        {% for name in numerical.keys() %}<option value="{{ name }}">{{ name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="two-col">
+      <div><h3>Thống kê theo nhóm</h3><div id="numericStats" class="table-wrap"></div></div>
+      <div><h3>Tỷ lệ Churn theo thời gian sử dụng</h3><div class="chart-box"><canvas id="tenureChart"></canvas></div></div>
+    </div>
+    <div class="insight" id="numericInsight"></div>
+  </section>
 
-      <!-- Khung chứa canvas vẽ biểu đồ cột bằng thư viện Chart.js -->
-      <div class="chart-box">
-        <canvas id="chart"></canvas>
-      </div>
-      <p class="note">
-        <em>Giải thích cách xem:</em> Mỗi nhóm danh mục có hai cột (Rời bỏ và Ở lại) cộng lại đúng 100%. 
-        Rê chuột vào từng cột để xem tổng số khách hàng thực tế thuộc nhóm đó.
-      </p>
-    </section>
-  </main>
+  <section id="profile" class="panel">
+    <h2>3. Hồ sơ khách hàng</h2>
+    <p class="muted">So sánh quy mô nhóm và giá trị trung bình của các biến số.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Chỉ số</th><th>Churn = Yes</th><th>Churn = No</th></tr></thead>
+        <tbody>
+          <tr><td>Số khách hàng</td><td>{{ profile.Yes.customers }}</td><td>{{ profile.No.customers }}</td></tr>
+          <tr><td>Tỷ trọng khách hàng</td><td>{{ profile.Yes.share }}%</td><td>{{ profile.No.share }}%</td></tr>
+          {% for col in ['tenure','MonthlyCharges','TotalCharges'] %}
+          <tr><td>{{ col }} (trung bình)</td>
+            <td>{{ profile.Yes.numeric_means.get(col, 'N/A') if profile.Yes.numeric_means.get(col) is not none else 'N/A' }}</td>
+            <td>{{ profile.No.numeric_means.get(col, 'N/A') if profile.No.numeric_means.get(col) is not none else 'N/A' }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
 
-  <!-- Nạp thư viện Chart.js (phiên bản UMD từ CDN) để vẽ biểu đồ trực quan -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  
-  <script>
-    // 1. Nhận dữ liệu đã xử lý từ Flask backend (dạng JSON object)
-    // Cấu trúc DATA: { "Contract": { "categories": [...], "churn_yes": [...], "churn_no": [...], "customers": [...] }, ... }
-    const DATA = {{ data|tojson }};
-    const select = document.getElementById("feature");
-    const insight = document.getElementById("insight");
+  <section id="association" class="panel">
+    <h2>4. Phân tích tương quan và mức độ liên hệ</h2>
+    <h3>4.1. Pearson Correlation Heatmap</h3>
+    <p class="muted">Ma trận tương quan giữa tenure, MonthlyCharges, TotalCharges và Churn (Yes = 1, No = 0). Giá trị gần +1/-1 thể hiện tương quan tuyến tính mạnh theo chiều dương/âm; gần 0 thể hiện tương quan tuyến tính yếu.</p>
+    <div id="correlationHeatmap" class="table-wrap"></div>
+    <h3>4.2. Mức độ liên hệ giữa biến phân loại và Churn</h3>
+    <p class="muted">Cramér's V nằm trong khoảng 0–1; giá trị lớn hơn thể hiện mức liên hệ mạnh hơn trong dữ liệu này. Đây không phải quan hệ nhân quả.</p>
+    <div class="chart-box tall"><canvas id="associationChart"></canvas></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Biến</th><th>Chi-square</th><th>Cramér's V</th><th>P-value</th><th>P điều chỉnh</th><th>Kết luận</th></tr></thead>
+        <tbody>
+        {% for row in association.results %}
+          <tr>
+            <td>{{ row.feature }}</td><td>{{ row.chi2 }}</td><td>{{ row.cramers_v }}</td>
+            <td>{{ "%.4g"|format(row.p_value) }}</td><td>{{ "%.4g"|format(row.p_adjusted) }}</td>
+            <td>{% if row.significant %}<span class="status-yes">Có ý nghĩa thống kê</span>{% else %}Chưa đủ bằng chứng{% endif %}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6">Không đủ dữ liệu để tính kiểm định.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
 
-    // 2. Điền danh sách các thuộc tính (tên cột) vào thẻ <select>
-    Object.keys(DATA).forEach(function (name) {
-      const opt = document.createElement("option");
-      opt.value = name;
-      opt.textContent = name;
-      select.appendChild(opt);
-    });
+  <section id="testing" class="panel">
+    <h2>5. Kiểm định giả thuyết cho biến số</h2>
+    <p>Kiểm định Mann–Whitney U so sánh phân phối của từng biến giữa hai nhóm Churn.</p>
+    <p class="note">H₀: Hai nhóm có cùng phân phối. H₁: Phân phối của hai nhóm khác nhau. Mức ý nghĩa α = {{ hypothesis.alpha }}. P-value đã được hiệu chỉnh Benjamini–Hochberg.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Biến</th><th>Median Yes</th><th>Median No</th><th>U statistic</th><th>P-value</th><th>P điều chỉnh</th><th>Kết luận</th></tr></thead>
+        <tbody>
+        {% for row in hypothesis.results %}
+          <tr>
+            <td>{{ row.feature }}</td><td>{{ row.yes_median }}</td><td>{{ row.no_median }}</td>
+            <td>{{ row.u_statistic }}</td><td>{{ "%.4g"|format(row.p_value) }}</td><td>{{ "%.4g"|format(row.p_adjusted) }}</td>
+            <td>{% if row.significant %}<span class="status-yes">Bác bỏ H₀</span>{% else %}Chưa đủ bằng chứng bác bỏ H₀{% endif %}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="7">Không đủ dữ liệu để thực hiện kiểm định.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
 
-    // Chọn giá trị mặc định ban đầu là 'Contract' (Loại hợp đồng - biến có ảnh hưởng rất lớn tới churn)
-    select.value = "Contract";
+  <section id="segments" class="panel">
+    <h2>6. Phân tích phân khúc khách hàng</h2>
+    <p class="muted">Kết hợp loại hợp đồng và dịch vụ Internet để quan sát tỷ lệ Churn trong từng phân khúc.</p>
+    <div class="chart-box tall"><canvas id="segmentChart"></canvas></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Contract</th><th>InternetService</th><th>Số khách</th><th>Số khách rời bỏ</th><th>Churn Rate</th></tr></thead>
+        <tbody>
+        {% for row in segments.rows %}
+          <tr><td>{{ row.contract }}</td><td>{{ row.internet }}</td><td>{{ row.customers }}</td><td>{{ row.churned }}</td><td>{{ row.churn_rate }}%</td></tr>
+        {% else %}
+          <tr><td colspan="5">Không có dữ liệu phân khúc.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
 
-    // 3. Đọc màu sắc từ biến CSS trên :root để biểu đồ đồng bộ màu với giao diện website
-    const css = getComputedStyle(document.documentElement);
-    const textColor = css.getPropertyValue("--text").trim();
-    const gridColor = css.getPropertyValue("--line").trim();
+  <p class="note">Lưu ý: Các kết quả mô tả mối liên hệ trong dataset quan sát, không chứng minh yếu tố nào gây ra việc khách hàng rời bỏ. Những nhóm có số lượng khách nhỏ cần được diễn giải thận trọng.</p>
+</main>
 
-    // 4. Khởi tạo đối tượng biểu đồ Chart.js dạng cột (bar chart)
-    const chart = new Chart(document.getElementById("chart"), {
-      type: "bar",
-      data: {
-        labels: [],
-        datasets: [
-          // Cột màu đỏ: Tỷ lệ khách hàng rời bỏ dịch vụ (Churn = Yes)
-          { label: "Rời bỏ (Churn = Yes)", data: [], backgroundColor: "#d1495b" },
-          // Cột màu xanh: Tỷ lệ khách hàng tiếp tục ở lại (Churn = No)
-          { label: "Ở lại (Churn = No)", data: [], backgroundColor: "#3d8fb8" }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: { 
-            ticks: { color: textColor }, 
-            grid: { display: false } // Ẩn đường kẻ dọc để biểu đồ thoáng hơn
-          },
-          y: {
-            min: 0, 
-            max: 100, // Thang đo trục tung từ 0% đến 100%
-            title: { display: true, text: "Tỷ lệ khách hàng trong nhóm (%)", color: textColor },
-            ticks: { color: textColor, callback: function (v) { return v + "%"; } },
-            grid: { color: gridColor }
-          }
-        },
-        plugins: {
-          legend: { labels: { color: textColor } },
-          tooltip: {
-            // Tùy chỉnh nội dung hiển thị khi rê chuột (tooltip)
-            callbacks: {
-              // Hiển thị phần trăm rời bỏ/ở lại
-              label: function (ctx) { 
-                return ctx.dataset.label + ": " + ctx.parsed.y.toFixed(2) + "%"; 
-              },
-              // Hiển thị thêm thông tin cỡ mẫu (tổng số khách hàng của phân nhóm)
-              afterBody: function (items) {
-                const d = DATA[select.value];
-                return "Số khách trong nhóm: " + d.customers[items[0].dataIndex].toLocaleString("vi-VN");
-              }
-            }
-          }
+<script>
+const CATEGORY = {{ data|tojson }};
+const TENURE = {{ tenure|tojson }};
+const NUMERICAL = {{ numerical|tojson }};
+const CORRELATION = {{ correlation|tojson }};
+const ASSOCIATION = {{ association.results|tojson }};
+const SEGMENTS = {{ segments|tojson }};
+
+const css = getComputedStyle(document.documentElement);
+const textColor = css.getPropertyValue("--text").trim() || "#333";
+const gridColor = css.getPropertyValue("--line").trim() || "#ddd";
+
+function makeChart(id, config) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return null;
+  return new Chart(canvas, config);
+}
+
+const featureSelect = document.getElementById("feature");
+Object.keys(CATEGORY).forEach(name => {
+  const option = document.createElement("option");
+  option.value = name;
+  option.textContent = name;
+  featureSelect.appendChild(option);
+});
+if (CATEGORY.Contract) featureSelect.value = "Contract";
+
+const categoryChart = makeChart("categoryChart", {
+  type: "bar",
+  data: { labels: [], datasets: [
+    {label: "Rời bỏ (Yes)", data: [], backgroundColor: "#d1495b"},
+    {label: "Ở lại (No)", data: [], backgroundColor: "#3d8fb8"}
+  ]},
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      x: {stacked: true, ticks: {color: textColor}, grid: {display: false}},
+      y: {stacked: true, min: 0, max: 100, ticks: {color: textColor, callback: v => v + "%"},
+          title: {display: true, text: "Tỷ lệ trong nhóm (%)", color: textColor},
+          grid: {color: gridColor}}
+    },
+    plugins: {legend: {labels: {color: textColor}},
+      tooltip: {callbacks: {
+        afterBody: items => {
+          const item = items[0], d = CATEGORY[featureSelect.value];
+          return "Số khách trong nhóm: " + d.customers[item.dataIndex].toLocaleString("vi-VN");
         }
-      }
-    });
-
-    // 5. Hàm cập nhật lại biểu đồ và dòng insight khi người dùng chọn biến khác
-    function render() {
-      const d = DATA[select.value];
-      
-      // Cập nhật nhãn trục hoành và số liệu 2 cột
-      chart.data.labels = d.categories;
-      chart.data.datasets[0].data = d.churn_yes;
-      chart.data.datasets[1].data = d.churn_no;
-      chart.update();
-
-      // Hiển thị thông điệp nhận xét về nhóm có nguy cơ rời bỏ cao nhất (phần tử đầu tiên vì đã sort giảm dần)
-      insight.textContent = "Nhóm có tỷ lệ rời bỏ cao nhất: " + d.categories[0] + " (" +
-        d.churn_yes[0].toFixed(2) + "%, " + d.customers[0].toLocaleString("vi-VN") + " khách).";
+      }}
     }
+  }
+});
 
-    // Lắng nghe sự kiện thay đổi lựa chọn của người dùng trên dropdown
-    select.addEventListener("change", render);
+function renderCategory() {
+  const d = CATEGORY[featureSelect.value];
+  if (!d) return;
+  categoryChart.data.labels = d.categories;
+  categoryChart.data.datasets[0].data = d.churn_yes;
+  categoryChart.data.datasets[1].data = d.churn_no;
+  categoryChart.update();
+  const delta = d.difference[0];
+  document.getElementById("categoryInsight").textContent =
+    "Nhóm có tỷ lệ Churn cao nhất: " + d.categories[0] + " (" + d.churn_yes[0] +
+    "%, " + d.customers[0].toLocaleString("vi-VN") + " khách). Mức này " +
+    (delta >= 0 ? "cao hơn " : "thấp hơn ") + "tỷ lệ chung " + Math.abs(delta).toFixed(2) +
+    " điểm phần trăm.";
+}
+featureSelect.addEventListener("change", renderCategory);
+renderCategory();
 
-    // Vẽ biểu đồ lần đầu tiên ngay khi tải trang
-    render();
-  </script>
+const tenureChart = makeChart("tenureChart", {
+  type: "line",
+  data: {labels: TENURE.labels, datasets: [{
+    label: "Tỷ lệ Churn", data: TENURE.rates, borderColor: "#d1495b",
+    backgroundColor: "rgba(209,73,91,.15)", fill: true, tension: .25
+  }]},
+  options: {responsive: true, maintainAspectRatio: false,
+    scales: {y: {beginAtZero: true, max: 100, ticks: {callback: v => v + "%"}}},
+    plugins: {tooltip: {callbacks: {afterLabel: ctx =>
+      "Số khách trong nhóm: " + TENURE.customers[ctx.dataIndex].toLocaleString("vi-VN")
+    }}}}
+});
+
+const numericSelect = document.getElementById("numericFeature");
+function renderNumeric() {
+  const name = numericSelect.value, d = NUMERICAL[name];
+  if (!d) return;
+  const rows = ["count", "mean", "median", "std", "q1", "q3"];
+  const labels = {count:"Số quan sát", mean:"Trung bình", median:"Trung vị",
+    std:"Độ lệch chuẩn", q1:"Q1 (25%)", q3:"Q3 (75%)"};
+  let html = "<table><thead><tr><th>Thống kê</th><th>Churn Yes</th><th>Churn No</th></tr></thead><tbody>";
+  rows.forEach(k => {
+    html += `<tr><td>${labels[k]}</td><td>${d.Yes[k] ?? "N/A"}</td><td>${d.No[k] ?? "N/A"}</td></tr>`;
+  });
+  html += "</tbody></table>";
+  document.getElementById("numericStats").innerHTML = html;
+  const delta = (d.Yes.mean ?? 0) - (d.No.mean ?? 0);
+  document.getElementById("numericInsight").textContent =
+    name + ": trung bình nhóm Churn Yes " + (d.Yes.mean ?? "N/A") +
+    ", nhóm Churn No " + (d.No.mean ?? "N/A") +
+    ". Chênh lệch trung bình (Yes - No): " + delta.toFixed(2) +
+    ". Đây là thống kê mô tả, cần kết hợp kiểm định để đánh giá bằng chứng thống kê.";
+}
+numericSelect.addEventListener("change", renderNumeric);
+renderNumeric();
+
+// Render bảng heatmap tương quan Pearson.
+(function renderCorrelationHeatmap() {
+  const target = document.getElementById("correlationHeatmap");
+  if (!target || !CORRELATION.labels.length) return;
+  let markup = '<table><thead><tr><th>Biến</th>';
+  CORRELATION.labels.forEach(label => markup += `<th>${label}</th>`);
+  markup += '</tr></thead><tbody>';
+  CORRELATION.matrix.forEach((row, i) => {
+    markup += `<tr><th>${CORRELATION.labels[i]}</th>`;
+    row.forEach(value => {
+      const alpha = Math.max(0.08, Math.abs(value) * 0.75);
+      const color = value >= 0
+        ? `rgba(209,73,91,${alpha})`
+        : `rgba(61,143,184,${alpha})`;
+      markup += `<td style="background:${color};text-align:center;font-weight:600">${value.toFixed(2)}</td>`;
+    });
+    markup += '</tr>';
+  });
+  markup += '</tbody></table>';
+  target.innerHTML = markup;
+})();
+
+makeChart("associationChart", {
+  type: "bar",
+  data: {labels: ASSOCIATION.map(x => x.feature), datasets: [{
+    label: "Cramér's V", data: ASSOCIATION.map(x => x.cramers_v),
+    backgroundColor: "#548ca8"
+  }]},
+  options: {indexAxis: "y", responsive: true, maintainAspectRatio: false,
+    scales: {x: {beginAtZero: true, max: 1, title: {display: true, text: "Cramér's V"}}},
+    plugins: {legend: {display: false}}}
+});
+
+makeChart("segmentChart", {
+  type: "bar",
+  data: {labels: SEGMENTS.labels, datasets: [{
+    label: "Tỷ lệ Churn", data: SEGMENTS.rates, backgroundColor: "#d18b45"
+  }]},
+  options: {indexAxis: "y", responsive: true, maintainAspectRatio: false,
+    scales: {x: {beginAtZero: true, max: 100, ticks: {callback: v => v + "%"}}},
+    plugins: {tooltip: {callbacks: {afterLabel: ctx =>
+      "Số khách trong phân khúc: " + SEGMENTS.customers[ctx.dataIndex].toLocaleString("vi-VN")
+    }}}}
+});
+</script>
 </body>
 </html>

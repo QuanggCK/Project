@@ -12,8 +12,16 @@ MỤC ĐÍCH:
 
 from flask import Flask, render_template
 
-# Nhập các hàm xử lý phân tích và mô hình từ thư mục mã nguồn src/
-from src.analysis import churn_rate_by_category
+from src.analysis import (
+    categorical_association,
+    churn_profile,
+    churn_rate_by_category,
+    churn_rate_by_tenure,
+    correlation_analysis,
+    numerical_analysis,
+    numerical_hypothesis_test,
+    segment_analysis,
+)
 from src.data_loader import load_raw, summarize
 from src.model import run as run_model
 
@@ -63,8 +71,17 @@ def factors():
         + Truyền dictionary dữ liệu sang 'factors.html' để Chart.js hiển thị biểu đồ tương tác.
     """
     df = load_raw()
-    data = churn_rate_by_category(df)
-    return render_template("factors.html", data=data)
+    return render_template(
+        "factors.html",
+        data=churn_rate_by_category(df),
+        tenure=churn_rate_by_tenure(df),
+        numerical=numerical_analysis(df),
+        correlation=correlation_analysis(df),
+        association=categorical_association(df),
+        hypothesis=numerical_hypothesis_test(df),
+        profile=churn_profile(df),
+        segments=segment_analysis(df),
+    )
 
 
 @app.route("/model")
@@ -84,5 +101,4 @@ def model_page():
 
 
 if __name__ == "__main__":
-    # Chạy ứng dụng web ở chế độ Debug (tự động tải lại mã khi có thay đổi và hiển thị chi tiết lỗi)
     app.run(debug=True)
