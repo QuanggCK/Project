@@ -1,6 +1,6 @@
 """
 ===============================================================================
-BƯỚC 3: XÂY DỰNG, HUẤN LUYỆN VÀ ĐÁNH GIÁ MÔ HÌNH DỰ ĐOÁN (MACHINE LEARNING)
+XÂY DỰNG, HUẤN LUYỆN VÀ ĐÁNH GIÁ MÔ HÌNH DỰ ĐOÁN (MACHINE LEARNING)
 ===============================================================================
 Mục đích module:
     - Xây dựng quy trình học máy hoàn chỉnh (Machine Learning Pipeline) bao gồm:

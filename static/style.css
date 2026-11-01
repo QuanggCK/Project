@@ -6,6 +6,8 @@
   --head: #eef2f6;
   --flag: #fff4d6;
   --accent: #0b5d8a;
+  --card: #ffffff;   
+  --soft: #f4f6f8;  
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -16,6 +18,8 @@
     --head: #1b232d;
     --flag: #4a3b12;
     --accent: #6cb8e6;
+    --card: #181f27;  
+    --soft: #1f2832;
   }
 }
 * { box-sizing: border-box; }

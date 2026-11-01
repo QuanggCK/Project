@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 ===============================================================================
 BƯỚC 2: PHÂN TÍCH TƯƠNG QUAN ĐƠN BIẾN (CATEGORICAL FEATURE ANALYSIS)
@@ -12,7 +13,7 @@ Mục đích module:
 """
 
 """Phân tích các yếu tố liên quan đến Customer Churn cho Telco dataset."""
-from __future__ import annotations
+
 
 import numpy as np
 import pandas as pd
