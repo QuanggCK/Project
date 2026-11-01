@@ -112,20 +112,20 @@
         - <span style="color: #3d8fb8; font-weight: bold;">Hệ số âm (màu xanh):</span> Làm giảm log-odds rời bỏ (khách hàng có xu hướng ở lại lâu dài).<br>
         <strong>Chuẩn hóa:</strong> Các biến định lượng (<code>tenure</code>, <code>MonthlyCharges</code>, <code>TotalCharges</code>) 
         đã được đưa về thang chuẩn hóa chuẩn (StandardScaler), nên hệ số đo lường mức thay đổi trên mỗi 1 độ lệch chuẩn.<br>
-        <strong>Odds Ratio (Tỉ số khả dĩ - \(e^{\beta}\)):</strong> 
-        Giá trị > 1 làm tăng nguy cơ rời bỏ; giá trị < 1 giúp bảo vệ khách hàng không rời bỏ.
+        <strong>Odds Ratio (Tỉ số khả dĩ — <em>e</em><sup>&beta;</sup>):</strong>
+        Giá trị &gt; 1 làm tăng nguy cơ rời bỏ; giá trị &lt; 1 giúp bảo vệ khách hàng không rời bỏ.
       </p>
-      
+
       <!-- Biểu đồ thanh nằm ngang hiển thị độ lớn và chiều hướng của hệ số -->
       <div class="chart-box"><canvas id="coefChart"></canvas></div>
-      
+
       <div class="scroll">
         <table>
           <thead>
             <tr>
               <th>Đặc trưng</th>
-              <th>Hệ số (\(\beta\))</th>
-              <th>Odds ratio (\(e^{\beta}\))</th>
+              <th>Hệ số (&beta;)</th>
+              <th>Odds ratio (<em>e</em><sup>&beta;</sup>)</th>
             </tr>
           </thead>
           <tbody>
@@ -140,8 +140,8 @@
         </table>
       </div>
       <p class="note">
-        <em>Cảnh báo đa cộng tuyến:</em> <code>tenure</code> (thời gian gắn bó), <code>MonthlyCharges</code> (cước tháng) và 
-        <code>TotalCharges</code> (tổng cước) có quan hệ mật thiết với nhau (\(Total \approx tenure \times Monthly\)), 
+        <em>Cảnh báo đa cộng tuyến:</em> <code>tenure</code> (thời gian gắn bó), <code>MonthlyCharges</code> (cước tháng) và
+        <code>TotalCharges</code> (tổng cước) có quan hệ mật thiết với nhau (<em>Total &approx; tenure &times; Monthly</em>),
         nên dấu của từng hệ số riêng lẻ cần được diễn giải hết sức thận trọng trong phân tích nhân quả.
       </p>
     </section>
@@ -151,7 +151,7 @@
       <h2>Mức độ quan trọng của từng yếu tố (Permutation Importance)</h2>
       <p class="note">
         Được tính trên tập kiểm tra bằng mô hình có CV ROC-AUC cao nhất (<strong>{{ r.best_name }}</strong>).<br>
-        <strong>Cơ chế:</strong> Xáo trộn ngẫu nhiên từng cột dữ liệu (làm mất mối liên hệ giữa cột đó với nhãn) và đo lường 
+        <strong>Cơ chế:</strong> Xáo trộn ngẫu nhiên từng cột dữ liệu (làm mất mối liên hệ giữa cột đó với nhãn) và đo lường
         mức sụt giảm của điểm ROC-AUC. Điểm ROC-AUC sụt giảm càng nhiều thì đặc trưng đó càng đóng vai trò quan trọng.<br>
         <em>Lưu ý:</em> Đây là mức độ liên hệ và phụ thuộc trong mô hình máy học, không mang ý nghĩa là bằng chứng của quan hệ nhân quả tuyệt đối.
       </p>
@@ -165,7 +165,7 @@
     // 1. Nhận dữ liệu hệ số Logistic Regression và Permutation Importance từ Flask
     const COEF = {{ r.top_coef|tojson }};
     const PERM = {{ r.top_perm|tojson }};
-    
+
     // Đọc màu sắc chủ đạo từ biến CSS để biểu đồ đồng bộ màu sắc với web
     const css = getComputedStyle(document.documentElement);
     const textColor = css.getPropertyValue("--text").trim();
@@ -174,14 +174,14 @@
     // Hàm tiện ích tạo cấu hình trục tọa độ cho biểu đồ thanh ngang
     function axisOpts(title) {
       return {
-        x: { 
-          title: { display: true, text: title, color: textColor }, 
-          ticks: { color: textColor }, 
-          grid: { color: gridColor } 
+        x: {
+          title: { display: true, text: title, color: textColor },
+          ticks: { color: textColor },
+          grid: { color: gridColor }
         },
-        y: { 
-          ticks: { color: textColor }, 
-          grid: { display: false } 
+        y: {
+          ticks: { color: textColor },
+          grid: { display: false }
         }
       };
     }
@@ -200,17 +200,17 @@
       },
       options: {
         indexAxis: "y", // Biểu đồ dạng thanh nằm ngang
-        responsive: true, 
+        responsive: true,
         maintainAspectRatio: false,
         scales: axisOpts("Hệ số (log-odds)"),
         plugins: {
           legend: { display: false },
-          tooltip: { 
-            callbacks: { 
+          tooltip: {
+            callbacks: {
               label: function (ctx) {
                 return "Hệ số " + ctx.parsed.x.toFixed(3) + " · Odds ratio " + COEF[ctx.dataIndex].odds_ratio.toFixed(2);
-              } 
-            } 
+              }
+            }
           }
         }
       }
@@ -229,7 +229,7 @@
       },
       options: {
         indexAxis: "y", // Biểu đồ dạng thanh nằm ngang
-        responsive: true, 
+        responsive: true,
         maintainAspectRatio: false,
         scales: axisOpts("Mức ROC-AUC giảm khi xáo trộn biến"),
         plugins: { legend: { display: false } }
